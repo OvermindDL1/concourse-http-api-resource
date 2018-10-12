@@ -76,7 +76,7 @@ class HTTPResource:
         # allow also to interpolate params
         values.update(params)
 
-        # Key tag to load file data
+        # key tag to load file data
         values = {k: self._load_filedata(command_argument[0], v) for k, v in values.items()}
 
         # apply templating of environment variables onto parameters
@@ -94,7 +94,7 @@ class HTTPResource:
 
     def _load_filedata(self, base_path, value):
         """Check single level values for loading and replacing with file data"""
-        log.debug("filedata-test: " + repr(value))
+        log.debug("filedata-test: %s", repr(value))
         if isinstance(value, dict) and "load_filedata" in value:
             try:
                 with open(base_path+'/'+value['load_filedata'], 'r') as f:
