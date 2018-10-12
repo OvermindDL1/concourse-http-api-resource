@@ -82,6 +82,8 @@ class HTTPResource:
         # apply templating of environment variables onto parameters
         rendered_params = self._interpolate(params, values)
 
+        log.debug('rendered_params: %s', rendered_params)
+
         status_code, text = self.cmd(command_argument, rendered_params)
 
         # return empty version object
@@ -102,7 +104,7 @@ class HTTPResource:
                     if "trim" in value and value['trim']: data = data.strip()
             except FileNotFoundError:
                 if 'default' in value: return value['default']
-                else raise
+                else: raise
         else:
             return value
 
