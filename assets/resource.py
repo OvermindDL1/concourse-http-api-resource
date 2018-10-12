@@ -76,6 +76,9 @@ class HTTPResource:
         # allow also to interpolate params
         values.update(params)
 
+        # Key tag to load file data
+        values = {k: self._load_filedata(command_argument[0], v) for k, v in values.items()}
+
         # apply templating of environment variables onto parameters
         rendered_params = self._interpolate(params, values)
 
@@ -88,6 +91,20 @@ class HTTPResource:
             response.update(json.loads(text))
 
         return json.dumps(response)
+
+    def _load_filedata(self, base_path, value):
+        """Check single level values for loading and replacing with file data"""
+        log.debug("filedata-test: " + repr(value))
+        if isinstance(value, dict) and "load_filedata" in value:
+            try:
+                with open(base_path+'/'+value['load_filedata'], 'r') as f:
+                    data = f.read()
+                    if "trim" in value and value['trim']: data = data.strip()
+            except FileNotFoundError:
+                if 'default' in value: return value['default']
+                else raise
+        else:
+            return value
 
     def _interpolate(self, data, values):
         """Recursively apply values using format on all string key and values in data."""
