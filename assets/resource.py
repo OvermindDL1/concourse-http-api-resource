@@ -79,6 +79,8 @@ class HTTPResource:
         # key tag to load file data
         values = {k: self._load_filedata(command_argument[0], v) for k, v in values.items()}
 
+        log.debug('processed_values: %s', values)
+
         # apply templating of environment variables onto parameters
         rendered_params = self._interpolate(params, values)
 
@@ -98,11 +100,16 @@ class HTTPResource:
         """Check single level values for loading and replacing with file data"""
         log.debug("filedata-test: %s", repr(value))
         if isinstance(value, dict) and "load_filedata" in value:
+            log.debug("filedata-found: %s", repr(value))
             try:
                 with open(base_path+'/'+value['load_filedata'], 'r') as f:
                     data = f.read()
+                    log.debug("filedata-loaded: %s", repr(data))
                     if "trim" in value and value['trim']: data = data.strip()
+                    log.debug("filedata-processed: %s", repr(data))
+                    return data
             except FileNotFoundError:
+                log.debug("filedata-failed", value)
                 if 'default' in value: return value['default']
                 else: raise
         else:
