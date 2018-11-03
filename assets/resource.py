@@ -74,6 +74,9 @@ class HTTPResource:
         log.debug('args: %s', command_argument)
         log.debug('environment: %s', os.environ)
 
+        path = "/"
+        if len(command_argument) >= 1: path = command_argument[0]
+
         # initialize values with Concourse environment variables
         values = {k: v for k, v in os.environ.items() if k.startswith('BUILD_') or k == 'ATC_EXTERNAL_URL'}
 
@@ -85,7 +88,7 @@ class HTTPResource:
         values.update(params)
 
         # key tag to load file data
-        values = {k: self._load_filedata(command_argument[0], v) for k, v in values.items()}
+        values = {k: self._load_filedata(path, v) for k, v in values.items()}
 
         log.debug('processed_values: %s', values)
 
@@ -96,7 +99,7 @@ class HTTPResource:
 
         if command_name == 'out':
             status_code, text = self.cmd(command_name, command_argument, rendered_params)
-            _status_code, version = self.cmd(command_name, command_argument, rendered_params)
+            _status_code, version = self.cmd("check", command_argument, rendered_params)
             response = {"version": {"ref": version}}
             if os.environ.get('TEST', False):
                 response.update(json.loads(text))
@@ -107,7 +110,7 @@ class HTTPResource:
             return json.dumps(response)
         elif command_name == 'in':
             status_code, version, data = self.cmd(command_name, command_argument, rendered_params)
-            with open(command_argument[0]+'/'+rendered_params.get('output', 'data'), 'wb') as f:
+            with open(path+'/'+rendered_params.get('output', 'data'), 'wb') as f:
                 f.write(data)
             response = {"version": {"ref": version}, "metadata": []}
             return json.dumps(response)
