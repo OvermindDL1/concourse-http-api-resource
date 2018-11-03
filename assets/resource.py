@@ -12,16 +12,19 @@ import requests
 class HTTPResource:
     """HTTP resource implementation."""
 
-    def cmd(self, arg, data):
+    def cmd(self, name, arg, data):
         """Make the requests."""
 
         method = data.get('method', 'GET')
+        check_method = data.get('check_method', 'HEAD')
+        if name == 'check': method = check_method
         uri = data['uri']
         headers = data.get('headers', {})
         json_data = data.get('json', None)
         ssl_verify = data.get('ssl_verify', True)
         ok_responses = data.get('ok_responses', [200, 201, 202, 204])
         form_data = data.get('form_data')
+        version_header = data.get('version_header', 'Last-Modified')
 
         if isinstance(ssl_verify, bool):
             verify = ssl_verify
@@ -41,7 +44,12 @@ class HTTPResource:
         if response.status_code not in ok_responses:
             raise Exception('Unexpected response {}'.format(response.status_code))
 
-        return (response.status_code, response.text)
+        if name == 'out':
+            return (response.status_code, response.text)
+        elif name == 'check':
+            return (response.status_code, response.headers[version_header])
+        elif name == 'in':
+            return (response.status_code, response.headers[version_header], response.content)
 
     def run(self, command_name: str, json_data: str, command_argument: str):
         """Parse input/arguments, perform requested command return output."""
@@ -86,15 +94,23 @@ class HTTPResource:
 
         log.debug('rendered_params: %s', rendered_params)
 
-        status_code, text = self.cmd(command_argument, rendered_params)
-
-        # return empty version object
-        response = {"version": {}}
-
-        if os.environ.get('TEST', False):
-            response.update(json.loads(text))
-
-        return json.dumps(response)
+        if command_name == 'out':
+            status_code, text = self.cmd(command_name, command_argument, rendered_params)
+            _status_code, version = self.cmd(command_name, command_argument, rendered_params)
+            response = {"version": {"ref": version}}
+            if os.environ.get('TEST', False):
+                response.update(json.loads(text))
+            return json.dumps(response)
+        elif command_name == 'check':
+            status_code, version = self.cmd(command_name, command_argument, rendered_params)
+            response = [{"ref": version}]
+            return json.dumps(response)
+        elif command_name == 'in':
+            status_code, version, data = self.cmd(command_name, command_argument, rendered_params)
+            with open(command_argument[0]+'/'+rendered_params.get('output', 'data'), 'wb') as f:
+                f.write(data)
+            response = {"version": {"ref": version}, "metadata": []}
+            return json.dumps(response)
 
     def _load_filedata(self, base_path, value):
         """Check single level values for loading and replacing with file data"""
